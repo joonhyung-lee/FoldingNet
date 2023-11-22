@@ -7,17 +7,17 @@ import torch.optim as optim
 
 from datasets import ShapeNetPartDataset
 from model import AutoEncoder
-from chamfer_distance.chamfer_distance import ChamferDistance
-
+# from chamfer_distance.chamfer_distance import ChamferDistance
+from loss import ChamferLoss
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--root', type=str, default='/home/rico/Workspace/Dataset/shapenet_part/shapenetcore_partanno_segmentation_benchmark_v0')
+parser.add_argument('--root', type=str, default='./dataset/shapenetcore_partanno_segmentation_benchmark_v0')
 parser.add_argument('--npoints', type=int, default=2048)
 parser.add_argument('--mpoints', type=int, default=2025)
 parser.add_argument('--batch_size', type=int, default=16)
 parser.add_argument('--lr', type=float, default=1e-4)
 parser.add_argument('--weight_decay', type=float, default=1e-6)
-parser.add_argument('--epochs', type=int, default=400)
+parser.add_argument('--epochs', type=int, default=1000)
 parser.add_argument('--num_workers', type=int, default=4)
 parser.add_argument('--log_dir', type=str, default='./log')
 args = parser.parse_args()
@@ -37,7 +37,8 @@ autoendocer = AutoEncoder()
 autoendocer.to(device)
 
 # loss function
-cd_loss = ChamferDistance()
+# cd_loss = ChamferDistance()
+cd_loss = ChamferLoss()
 # optimizer
 optimizer = optim.Adam(autoendocer.parameters(), lr=args.lr, betas=[0.9, 0.999], weight_decay=args.weight_decay)
 
@@ -57,6 +58,7 @@ for epoch in range(1, args.epochs + 1):
         point_clouds = point_clouds.to(device)
         recons = autoendocer(point_clouds)
         ls = cd_loss(point_clouds.permute(0, 2, 1), recons.permute(0, 2, 1))
+        # ls = cd_loss(point_clouds.permute(0, 2, 1), recons.permute(0, 2, 1))
         
         optimizer.zero_grad()
         ls.backward()
@@ -75,6 +77,7 @@ for epoch in range(1, args.epochs + 1):
             point_clouds = point_clouds.to(device)
             recons = autoendocer(point_clouds)
             ls = cd_loss(point_clouds.permute(0, 2, 1), recons.permute(0, 2, 1))
+            # ls = cd_loss(point_clouds.permute(0, 2, 1), recons.permute(0, 2, 1))
             total_cd_loss += ls.item()
     
     # calculate the mean cd loss
@@ -87,7 +90,7 @@ for epoch in range(1, args.epochs + 1):
         torch.save(autoendocer.state_dict(), os.path.join(args.log_dir, 'model_lowest_cd_loss.pth'))
     
     # save the model every 100 epochs
-    if (epoch) % 100 == 0:
+    if (epoch) % 10 == 0:
         torch.save(autoendocer.state_dict(), os.path.join(args.log_dir, 'model_epoch_{}.pth'.format(epoch)))
     
     end = time.time()
