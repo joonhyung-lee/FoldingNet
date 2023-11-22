@@ -1,27 +1,44 @@
+import wandb
 import argparse
 import os
 import time
+from datetime import datetime
 
 import torch
 import torch.optim as optim
-
 from datasets import ShapeNetPartDataset
 from model import AutoEncoder
 # from chamfer_distance.chamfer_distance import ChamferDistance
 from loss import ChamferLoss
 
+
+def get_runname():
+    now = datetime.now()
+    format = "%m%d:%H%M"
+    runname = now.strftime(format)
+    return runname
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--root', type=str, default='./dataset/shapenetcore_partanno_segmentation_benchmark_v0')
 parser.add_argument('--npoints', type=int, default=2048)
+parser.add_argument('--runname', type=str, default='foldingnet_ae_01')
+parser.add_argument('--name', type=str, default='shapenet_ae')
 parser.add_argument('--mpoints', type=int, default=2025)
 parser.add_argument('--batch_size', type=int, default=16)
 parser.add_argument('--lr', type=float, default=1e-4)
 parser.add_argument('--weight_decay', type=float, default=1e-6)
-parser.add_argument('--epochs', type=int, default=1000)
-parser.add_argument('--num_workers', type=int, default=4)
+parser.add_argument('--epochs', type=int, default=5000)
+parser.add_argument('--num_workers', type=int, default=8)
 parser.add_argument('--log_dir', type=str, default='./log')
+parser.add_argument('--WANDB', type=bool, default=True)
+
 args = parser.parse_args()
 
+# Set logger 
+runname = get_runname() if args.runname=='None' else args.runname
+if args.WANDB:
+    wandb.init(project = args.name)
+    wandb.run.name = runname   
 
 # prepare training and testing dataset
 train_dataset = ShapeNetPartDataset(root=args.root, npoints=args.npoints, split='train', classification=False, data_augmentation=True)
@@ -66,7 +83,9 @@ for epoch in range(1, args.epochs + 1):
 
         if (i + 1) % 100 == 0:
             print('Epoch {}/{} with iteration {}/{}: CD loss is {}.'.format(epoch, args.epochs, i + 1, batches, ls.item() / len(point_clouds)))
-    
+            # Log training loss
+            wandb.log({"Chamfer Loss": ls.item() / len(point_clouds)})
+
     # evaluation
     autoendocer.eval()
     total_cd_loss = 0
@@ -99,3 +118,19 @@ for epoch in range(1, args.epochs + 1):
     print('\033[32mEpoch {}/{}: reconstructed Chamfer Distance is {}. Minimum cd loss is {} in epoch {}.\033[0m'.format(
         epoch, args.epochs, mean_cd_loss, min_cd_loss, best_epoch))
     print('\033[31mCost {} minutes and {} seconds\033[0m'.format(int(cost // 60), int(cost % 60)))
+
+    custom_chart = wandb.plot.line_series(
+        xs=[epoch for epoch in range(1, args.epochs + 1)],
+        ys=[[mean_cd_loss], [mean_cd_loss]],  # Training and validation loss
+        keys=["Training Loss", "Validation Loss"],
+        title="Loss Over Epochs",
+        xaxis="Epoch",
+        yaxis="Loss",
+    )
+
+    # Log training loss
+    wandb.log({"Training Loss": mean_cd_loss})
+    # Log evaluation metrics
+    wandb.log({"Validation Loss": mean_cd_loss})
+    # Log the custom chart
+    wandb.log({"Loss Over Epochs": custom_chart})
