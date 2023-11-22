@@ -17,6 +17,19 @@ def show_point_cloud(point_cloud, axis=False):
     ax.scatter(xs=point_cloud[:, 0], ys=point_cloud[:, 1], zs=point_cloud[:, 2], s=5)
     plt.show()
 
+def show_point_clouds(point_clouds, axis=False, device='cuda'):
+    """visual a point cloud
+    Args:
+        point_cloud (np.ndarray): the coordinates of point cloud
+        axis (bool, optional): Hid the coordinate of the matplotlib. Defaults to False.
+    """
+    ax = plt.figure().add_subplot(projection='3d')
+    for idx, point_cloud in enumerate(point_clouds):
+        pcd_np = np.array(point_cloud)
+        pcd_torch = torch.from_numpy(pcd_np).permute([1,0]).unsqueeze(0).to(device)
+        ax.scatter(xs=pcd_torch.cpu().detach().numpy()[0, :, 0], ys=pcd_torch.cpu().detach().numpy()[0, :, 1], zs=pcd_torch.cpu().detach().numpy()[0, :, 2], s=5)
+    ax._axis3don = False
+    plt.show()
 
 def setup_seed(seed):
     """
@@ -28,6 +41,11 @@ def setup_seed(seed):
     random.seed(seed)
     torch.backends.cudnn.deterministic = True
 
+
+# passthrough filter about specific axis
+def passthrough_filter(pcd, axis, interval):
+    mask = (pcd[:, axis] > interval[0]) & (pcd[:, axis] < interval[1])
+    return pcd[mask]
 
 def index_points(point_clouds, index):
     """
