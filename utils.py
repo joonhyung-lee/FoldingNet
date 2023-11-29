@@ -6,6 +6,28 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 
+import pyvista as pv
+
+def show_point_cloud_with_pyvista(point_cloud):
+    """
+    Visualize a point cloud using PyVista.
+
+    Args:
+        point_cloud (np.ndarray): The coordinates of the point cloud.
+    """
+    # Create a PyVista plotter
+    plotter = pv.Plotter()
+
+    # Create a point cloud mesh from the numpy array
+    cloud_mesh = pv.PolyData(point_cloud)
+
+    # Add the point cloud mesh to the plotter
+    plotter.add_mesh(cloud_mesh, point_size=5)
+
+    # Show the plot
+    plotter.show()
+
+
 def show_point_cloud(point_cloud, axis=False):
     """visual a point cloud
     Args:
