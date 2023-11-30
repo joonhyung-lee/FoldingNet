@@ -28,15 +28,26 @@ def show_point_cloud_with_pyvista(point_cloud):
     plotter.show()
 
 
-def show_point_cloud(point_cloud, axis=False):
-    """visual a point cloud
+
+def show_point_cloud(point_cloud, axis=False, title='Point Cloud', xlabel='X-axis', ylabel='Y-axis', zlabel='Z-axis'):
+    """
+    Visualize a point cloud.
+
     Args:
-        point_cloud (np.ndarray): the coordinates of point cloud
-        axis (bool, optional): Hid the coordinate of the matplotlib. Defaults to False.
+        point_cloud (np.ndarray): The coordinates of the point cloud.
+        axis (bool, optional): Hide the coordinate of the matplotlib. Defaults to False.
+        title (str, optional): Title of the plot. Defaults to 'Point Cloud'.
+        xlabel (str, optional): Label for the X-axis. Defaults to 'X-axis'.
+        ylabel (str, optional): Label for the Y-axis. Defaults to 'Y-axis'.
+        zlabel (str, optional): Label for the Z-axis. Defaults to 'Z-axis'.
     """
     ax = plt.figure().add_subplot(projection='3d')
     ax._axis3don = axis
     ax.scatter(xs=point_cloud[:, 0], ys=point_cloud[:, 1], zs=point_cloud[:, 2], s=5)
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.set_zlabel(zlabel)
     plt.show()
 
 def show_point_clouds(point_clouds, axis=False, device='cuda'):
@@ -124,6 +135,26 @@ def to_one_hots(y, categories):
         y_ = y_.cuda()
     return y_
 
+def subsample_arrays(arrays_list, target_size=1024):
+    """
+    Subsamples each array in the list to a fixed number of rows (target_size).
+    Arrays with fewer rows than target_size are excluded from the result.
+    """
+    arrays_list_shape = [arr.shape for arr in arrays_list]
+    min_shape = np.min(arrays_list_shape, axis=0)
+    max_shape = np.max(arrays_list_shape, axis=0)
+    print(min_shape, max_shape)
+    # if min_shape[0] < target_size:
+    #     target_size = min_shape[0]
+    subsampled_list = []
+    for arr in arrays_list:
+        if arr.shape[0] > target_size:
+            # Select target_size rows randomly without replacement
+            indices = np.random.choice(arr.shape[0], target_size, replace=False)
+            subsampled_arr = arr[indices]
+            subsampled_list.append(subsampled_arr)
+    return subsampled_list
+
 
 if __name__ == '__main__':
     pcs = torch.rand(32, 3, 1024)
@@ -131,3 +162,4 @@ if __name__ == '__main__':
     print(knn_index.size())
     knn_pcs = index_points(pcs.permute(0, 2, 1), knn_index)
     print(knn_pcs.size())
+

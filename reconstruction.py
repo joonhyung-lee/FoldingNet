@@ -16,17 +16,17 @@ ae.eval()
 DATASET_PATH = './dataset/shapenetcore_partanno_segmentation_benchmark_v0'
 test_dataset = ShapeNetPartDataset(root=DATASET_PATH, npoints=1024, split='train', classification=False, data_augmentation=False, class_choice='Table')
 # Randomly select a point cloud from the test dataset
-# for _ in range(10):
-input_pc = test_dataset[random.randint(0, len(test_dataset))][0]
-# show_point_cloud(input_pc)
-show_point_cloud_with_pyvista(input_pc.numpy())
+for _ in range(10):
+    input_pc = test_dataset[random.randint(0, len(test_dataset))][0]
+    show_point_cloud(input_pc, title="Input Point Cloud")
+    # show_point_cloud_with_pyvista(input_pc.numpy())
 
-input_tensor = input_pc.unsqueeze(0).permute(0, 2, 1)
-output_tensor = ae(input_tensor)
-reconstructed_pc = output_tensor.permute(0, 2, 1).squeeze().detach().numpy()
+    input_tensor = input_pc.unsqueeze(0).permute(0, 2, 1)
+    output_tensor = ae(input_tensor)
+    reconstructed_pc = output_tensor.permute(0, 2, 1).squeeze().detach().numpy()
 
-# show_point_cloud(reconstructed_pc)
-show_point_cloud_with_pyvista(reconstructed_pc)
+    show_point_cloud(reconstructed_pc, title="Reconstructed Point Cloud")
+    # show_point_cloud_with_pyvista(reconstructed_pc)
 
 #%%
 cd_loss = ChamferLoss()

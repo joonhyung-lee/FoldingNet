@@ -1,3 +1,4 @@
+#%%
 import wandb
 import argparse
 import os
@@ -10,7 +11,8 @@ from datasets import ShapeNetPartDataset
 from model import AutoEncoder
 # from chamfer_distance.chamfer_distance import ChamferDistance
 from loss import ChamferLoss
-
+from utils import show_point_cloud, show_point_cloud_with_pyvista
+#%%
 
 def get_runname():
     now = datetime.now()
@@ -30,9 +32,9 @@ parser.add_argument('--weight_decay', type=float, default=1e-6)
 parser.add_argument('--epochs', type=int, default=5000)
 parser.add_argument('--num_workers', type=int, default=8)
 parser.add_argument('--log_dir', type=str, default='./log')
-parser.add_argument('--WANDB', type=bool, default=True)
+parser.add_argument('--WANDB', type=bool, default=False)
 
-args = parser.parse_args()
+args = parser.parse_args(args=[])
 
 # Set logger 
 runname = get_runname() if args.runname=='None' else args.runname
@@ -63,7 +65,14 @@ batches = int(len(train_dataset) / args.batch_size + 0.5)
 
 min_cd_loss = 1e3
 best_epoch = -1
-
+#%%
+for i, data in enumerate(train_dataloader):
+    point_clouds, _ = data
+    point_clouds = point_clouds.permute(0, 2, 1)
+    point_clouds = point_clouds.to(device)
+    show_point_cloud(point_clouds.cpu().numpy())
+    break
+#%%
 print('\033[31mBegin Training...\033[0m')
 for epoch in range(1, args.epochs + 1):
     # training
@@ -76,7 +85,9 @@ for epoch in range(1, args.epochs + 1):
         recons = autoendocer(point_clouds)
         ls = cd_loss(point_clouds.permute(0, 2, 1), recons.permute(0, 2, 1))
         # ls = cd_loss(point_clouds.permute(0, 2, 1), recons.permute(0, 2, 1))
-        
+        show_point_cloud(point_clouds.cpu().numpy())
+        show_point_cloud(recons.detach().cpu().numpy())
+        # print(f"ls: {ls}")
         optimizer.zero_grad()
         ls.backward()
         optimizer.step()
@@ -124,8 +135,7 @@ for epoch in range(1, args.epochs + 1):
         ys=[[mean_cd_loss], [mean_cd_loss]],  # Training and validation loss
         keys=["Training Loss", "Validation Loss"],
         title="Loss Over Epochs",
-        xaxis="Epoch",
-        yaxis="Loss",
+        xname="Epoch"
     )
 
     # Log training loss
@@ -134,3 +144,5 @@ for epoch in range(1, args.epochs + 1):
     wandb.log({"Validation Loss": mean_cd_loss})
     # Log the custom chart
     wandb.log({"Loss Over Epochs": custom_chart})
+
+# %%
